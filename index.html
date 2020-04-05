@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="./index.js"></script>
+    <title>Table Test</title>
+  </head>
+  <body style="overscroll-behavior-x: contain;">
+    <div class="bg-gray-200">
+      <div class="container mx-auto max-w-2xl py-8 px-12">
+        <h1 class="font-black text-2xl">
+          Sticky headers on horizonal scrolling 🕸
+        </h1>
+        <p class="my-4">
+          This is a demo for having a sticky header within a container that has
+          <code class="text-sm bg-gray-400 p-1 rounded whitespace-no-wrap"
+            >overflow-x</code
+          >
+          set to scroll.
+        </p>
+        <p class="my-4">
+          The problem we were facing is that currently, the header for dates is
+          using a JS library to sync its position with the content of the grid.
+          This mostly works, but even on decent computers, there is a
+          significant performance hit.
+        </p>
+        <video
+          src="./lag.mp4"
+          autoplay
+          muted
+          loop
+          class="max-w-xl rounded-lg shadow-lg my-4"
+        ></video>
+        <p class="my-4">
+          This is because setting
+          <code class="text-sm bg-gray-400 p-1 rounded"
+            >overflow-x: scroll</code
+          >
+          means that the browser will not respect the sticky positioning of the
+          element. We can fix this by separating the sticky header, but at the
+          cost of it no longer tracking horizontally.
+        </p>
+        <p
+          class="codepen"
+          data-height="265"
+          data-theme-id="light"
+          data-default-tab="result"
+          data-user="dannievinther"
+          data-slug-hash="OdjbBW"
+          data-preview="true"
+          style="
+            height: 265px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid;
+            margin: 1em 0;
+            padding: 1em;
+          "
+          data-pen-title="Position Sticky Table — without scrollsync"
+        >
+          <span
+            >See the Pen
+            <a href="https://codepen.io/dannievinther/pen/OdjbBW">
+              Position Sticky Table — without scrollsync</a
+            >
+            by Dannie Vinther (<a href="https://codepen.io/dannievinther"
+              >@dannievinther</a
+            >) on <a href="https://codepen.io">CodePen</a>.</span
+          >
+        </p>
+        <script
+          async
+          src="https://static.codepen.io/assets/embed/ei.js"
+        ></script>
+        <p class="my-4">
+          We can get around this issue by
+          <a
+            class="border-b-2 border-indigo-300"
+            href="https://stackoverflow.com/questions/37752448/css-position-sticky-and-overflow#answers-header"
+            >adding a fixed height</a
+          >. We have to be careful because we're doing a double sticky position
+          here; one for the header and search, and another for the grid header
+          (dates). This means that we can't just do
+          <code class="text-sm bg-gray-400 p-1 rounded whitespace-no-wrap"
+            >top: 0</code
+          >, we have to include an offset of the height of the first sticky
+          header.
+        </p>
+        <p>
+          In this demo, the categories are part of the grid and are sticky
+          pinned to the side. The top-left cell is pinned to the top and left,
+          with a z-index to keep it on top of the others.
+        </p>
+        <p class="my-4">
+          This works well! We have our grid headers sticking to the top on
+          scroll and keeping their position when being scrolled horizontally.
+          There is one problem though, and that has to do with the vertical
+          scrolling.
+        </p>
+        <p class="my-4">
+          Since we have given the grid a set height, it is now a set element
+          that contains the grid <span class="font-bold">within</span> itself.
+          This means that if we have a cursor over the grid, it will scroll the
+          grid even if it is barely in view.
+        </p>
+        <video
+          src="./scroll-capture.mp4"
+          autoplay
+          muted
+          loop
+          class="max-w-xl rounded-lg shadow-lg my-4"
+        ></video>
+        <p class="my-4">
+          What we want is for the grid to act like it's a part of the page
+          <span class="font-bold">without a restricted height</span> while we
+          scroll. We still need it to have a bounded height for the sticky
+          headers to work, so maybe we can toggle this behaviour only after the
+          grid takes up the entire viewport.
+        </p>
+        <p class="my-4">
+          <a
+            class="border-b-2 border-indigo-300"
+            href="https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API"
+            >Intersection Observers</a
+          >
+          are a way we can monitor what is currently on the viewport. We can
+          specify a target and a threshold, and an event will be triggered when
+          a percentage of the target (specified by the threshold) is visible.
+        </p>
+        <p class="my-4">
+          Unfortunately, since we don't know what percentage of the grid will be
+          showing when it is taking up the whole viewport so we can't target it.
+          What we can do is insert an invisible
+          <span class="font-bold">sentinel</span> div just above. When this div
+          is visible (the grid is not in full view) we remove the explicit
+          height and it scrolls normally. When the sentinel disappears, the grid
+          is now in full view and we can set a height to allow the sticky grid
+          elements.
+        </p>
+        <p class="my-4">
+          We can even check to see if we are above the sentinel when it is out
+          of view so that we only apply our class for height restrictions when
+          we have scrolled past it. This is what the callback for our
+          Intersection Observer looks like:
+        </p>
+        <pre
+          class="text-sm bg-gray-100 border-l-4 border-gray-700 rounded-sm px-4 py-2 overflow-auto shadow-inner"
+        >
+const callback = (entries) => {
+  const entry = entries[0];
+
+  const grid = document.getElementById("grid");
+  const isVisible = entry.isIntersecting;
+  const isBelow = entry.boundingClientRect.y &lt;= 0;
+
+  if (!isVisible && isBelow) {
+    grid.classList.add("h-screen-gap");
+  } else {
+    grid.classList.remove("h-screen-gap");
+  }
+}</pre
+        >
+        <p class="my-4">
+          A couple of drawbacks here are the scrollbar that jumps in size, and
+          an inability to smoothly scroll up and out of the grid in a single
+          swipe. As far as I can tell there is no way to override the
+          scroll-chaining behaviour to allow for a smooth scroll transition when
+          scrolling up from the grid, but it's not terrible.
+        </p>
+        <p class="my-4">
+          Now we can see the final result, which is looking pretty smooth! Have
+          a play with the demo :)
+        </p>
+      </div>
+    </div>
+    <div id="sentinel"></div>
+    <div class="flex bg-white sticky top-0 font-mono">
+      <div class="w-64 px-2 py-4 border-r">
+        Financial Report
+      </div>
+      <div class="flex-1 p-2">
+        <input
+          class="bg-gray-200 appearance-none border-2 border-gray-200 rounded py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-blue-200"
+          type="text"
+          placeholder="Search"
+        />
+      </div>
+    </div>
+    <div
+      id="grid"
+      class="grid grid-cols-16 overflow-scroll font-mono text-right"
+    >
+      <div class="p-2 border bg-white sticky top-0 left-0 z-10">&nbsp;</div>
+      <div class="grid-header">Oct 2019</div>
+      <div class="grid-header">Nov 2019</div>
+      <div class="grid-header">Dec 2019</div>
+      <div class="grid-header">Jan 2020</div>
+      <div class="grid-header">Feb 2020</div>
+      <div class="grid-header">Mar 2020</div>
+      <div class="grid-header">Apr 2020</div>
+      <div class="grid-header">May 2020</div>
+      <div class="grid-header">Jun 2020</div>
+      <div class="grid-header">Jul 2020</div>
+      <div class="grid-header">Aug 2020</div>
+      <div class="grid-header">Sep 2020</div>
+      <div class="grid-header">Oct 2020</div>
+      <div class="grid-header">Nov 2020</div>
+      <div class="grid-header">Dec 2020</div>
+      <div class="grid-sidebar">Bank</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Chase</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Credit Card</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Income</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Expenses</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Pizza Delivery</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Accounts</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Other Expenses</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Weapons</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Chimpanzees</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Jan Michael Vincents</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Adoring Fans</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Dogs</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Cats</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Family</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Gold</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Oil</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Tax Haven</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Monopoly Money</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+      <div class="grid-sidebar">Hitmen</div>
+      <div class="cell">21,321</div>
+      <div class="cell">932</div>
+      <div class="cell">12</div>
+      <div class="cell">92,019</div>
+      <div class="cell">281,021</div>
+      <div class="cell">1,213</div>
+      <div class="cell">123,213</div>
+      <div class="cell">12</div>
+      <div class="cell">34</div>
+      <div class="cell">10,293</div>
+      <div class="cell">19,290</div>
+      <div class="cell">123,122</div>
+      <div class="cell">19,111</div>
+      <div class="cell">211,213</div>
+      <div class="cell">290</div>
+    </div>
+  </body>
+</html>

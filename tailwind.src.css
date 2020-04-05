@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+
+.grid-cols-16 {
+  grid-template-columns: 256px repeat(15, minmax(100px, 1fr));
+}
+
+.h-screen-gap {
+  height: calc(100vh - 56px);
+}
+
+.grid-header {
+  @apply p-2 font-bold border-r border-b border-t bg-white sticky top-0 shadow
+}
+
+.grid-sidebar {
+  @apply p-2 border-r border-b border-l bg-white sticky left-0 text-left shadow
+}
+
+.cell {
+  @apply p-2 border-r border-b
+}
+
+@tailwind utilities;
